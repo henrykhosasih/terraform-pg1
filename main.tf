@@ -237,3 +237,55 @@ resource "aws_lb_listener" "web-lb-listener" {
     target_group_arn = aws_lb_target_group.web-tg.arn
   }
 }
+
+resource "aws_autoscaling_policy" "web-scale-up" {
+  name                   = "web-scale-up"
+  scaling_adjustment     = 1
+  adjustment_type        = "ChangeInCapacity"
+  cooldown               = 300
+  autoscaling_group_name = aws_autoscaling_group.web-asg.name
+}
+
+resource "aws_cloudwatch_metric_alarm" "web-cpu-high" {
+  alarm_name          = "web-cpu-high"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 2
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = 60
+  statistic           = "Average"
+  threshold           = 80
+
+  dimensions = {
+    AutoScalingGroupName = aws_autoscaling_group.web-asg.name
+  }
+
+  alarm_description = "Scale up when CPU exceeds 80%"
+  alarm_actions     = [aws_autoscaling_policy.web-scale-up.arn]
+}
+
+resource "aws_autoscaling_policy" "web-scale-down" {
+  name                   = "web-scale-down"
+  scaling_adjustment     = -1
+  adjustment_type        = "ChangeInCapacity"
+  cooldown               = 300
+  autoscaling_group_name = aws_autoscaling_group.web-asg.name
+}
+
+resource "aws_cloudwatch_metric_alarm" "web-cpu-low" {
+  alarm_name          = "web-cpu-low"
+  comparison_operator = "LessThanOrEqualToThreshold"
+  evaluation_periods  = 2
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = 60
+  statistic           = "Average"
+  threshold           = 40
+
+  dimensions = {
+    AutoScalingGroupName = aws_autoscaling_group.web-asg.name
+  }
+
+  alarm_description = "Scale down when CPU is below 40%"
+  alarm_actions     = [aws_autoscaling_policy.web-scale-down.arn]
+}
