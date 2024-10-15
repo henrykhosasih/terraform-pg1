@@ -23,9 +23,28 @@ resource "aws_subnet" "public-sub-1" {
 resource "aws_subnet" "private-sub-1" {
   vpc_id     = aws_vpc.my-vpc.id
   cidr_block = "10.0.2.0/24"
-  availability_zone = "us-east-1b"
+  availability_zone = "us-east-1a"
   tags = {
     Name = "Private Subnet 1"
+  }
+}
+
+resource "aws_subnet" "public-sub-2" {
+  vpc_id     = aws_vpc.my-vpc.id
+  cidr_block = "10.0.3.0/24"
+  map_public_ip_on_launch = true
+  availability_zone = "us-east-1b"
+  tags = {
+    Name = "Public Subnet 2"
+  }
+}
+
+resource "aws_subnet" "private-sub-2" {
+  vpc_id     = aws_vpc.my-vpc.id
+  cidr_block = "10.0.4.0/24"
+  availability_zone = "us-east-1b"
+  tags = {
+    Name = "Private Subnet 2"
   }
 }
 
@@ -68,13 +87,23 @@ resource "aws_route_table" "private-RT" {
   }
 }
 
-resource "aws_route_table_association" "public-RT-bind" {
-  subnet_id      = aws_subnet.public-sub-1.id
+resource "aws_route_table_association" "public-RT-bind-1" {
+  subnet_id      = aws_subnet.public-sub-1.id  # Subnet in AZ 1
   route_table_id = aws_route_table.public-RT.id
 }
 
-resource "aws_route_table_association" "private-RT-bind" {
-  subnet_id      = aws_subnet.private-sub-1.id
+resource "aws_route_table_association" "public-RT-bind-2" {
+  subnet_id      = aws_subnet.public-sub-2.id  # Subnet in AZ 2
+  route_table_id = aws_route_table.public-RT.id
+}
+
+resource "aws_route_table_association" "private-RT-bind-1" {
+  subnet_id      = aws_subnet.private-sub-1.id  # Subnet in AZ 1
+  route_table_id = aws_route_table.private-RT.id
+}
+
+resource "aws_route_table_association" "private-RT-bind-2" {
+  subnet_id      = aws_subnet.private-sub-2.id  # Subnet in AZ 2
   route_table_id = aws_route_table.private-RT.id
 }
 
@@ -137,8 +166,9 @@ data "aws_ami" "latest_amazon_linux" {
   }
 }
 
-resource "aws_instance" "web" {
-  ami = data.aws_ami.latest_amazon_linux.id
+resource "aws_launch_template" "web-template" {
+  name = "web"
+  image_id = data.aws_ami.latest_amazon_linux.id
   instance_market_options {
     market_type = "spot"
     spot_options {
@@ -150,10 +180,27 @@ resource "aws_instance" "web" {
   }
   instance_type = "t3.medium"
   vpc_security_group_ids = [aws_security_group.web.id]
-  subnet_id = aws_subnet.public-sub-1.id
-  user_data = file("user-data.sh")
+  user_data = base64encode(file("user-data.sh"))
+  update_default_version = true
   tags = {
     Name = "Web Spot"
   }
 }
 
+resource "aws_autoscaling_group" "web-asg" {
+  vpc_zone_identifier = [ aws_subnet.public-sub-1.id, aws_subnet.public-sub-2.id ]
+  desired_capacity   = 2
+  max_size           = 4
+  min_size           = 2
+
+  launch_template {
+    id      = aws_launch_template.web-template.id
+    version = aws_launch_template.web-template.latest_version
+  }
+
+  tag {
+    key                 = "Name"
+    value               = "Web Spot"
+    propagate_at_launch = true
+  }
+}
