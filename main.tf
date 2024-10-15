@@ -1,5 +1,10 @@
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
 resource "aws_vpc" "my-vpc" {
   cidr_block = "10.0.0.0/16"
+  enable_dns_hostnames = true
   tags = {
     Name = "my-vpc"
   }
@@ -138,8 +143,6 @@ resource "aws_instance" "web" {
     market_type = "spot"
     spot_options {
       max_price = 0.02
-      spot_instance_type = "persistent"
-      instance_interruption_behavior = "stop"
     }
   }
   lifecycle {
@@ -148,14 +151,7 @@ resource "aws_instance" "web" {
   instance_type = "t3.medium"
   vpc_security_group_ids = [aws_security_group.web.id]
   subnet_id = aws_subnet.public-sub-1.id
-  user_data = <<-EOF
-              #!/bin/bash
-              yum update -y
-              yum install -y httpd
-              echo "Hello, Henry!" > /var/www/html/index.html
-              systemctl start httpd
-              systemctl enable httpd
-              EOF
+  user_data = file("user-data.sh")
   tags = {
     Name = "Web Spot"
   }
