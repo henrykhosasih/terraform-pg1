@@ -116,14 +116,14 @@ resource "aws_security_group" "web" {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # Allow HTTP from anywhere
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # Allow SSH only from a specific IP range
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
@@ -166,6 +166,23 @@ data "aws_ami" "latest_amazon_linux" {
   }
 }
 
+resource "tls_private_key" "web_ec2_key" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+resource "aws_ssm_parameter" "web_ssh_key" {
+  name        = "/web/ssh/private_key"
+  type        = "SecureString"
+  value       = tls_private_key.web_ec2_key.private_key_pem
+  description = "Private SSH key for Web EC2 instances"
+}
+
+resource "aws_key_pair" "web_ec2_key_pair" {
+  key_name   = "web-ec2-key"
+  public_key = tls_private_key.web_ec2_key.public_key_openssh
+}
+
 resource "aws_launch_template" "web-template" {
   name     = "web"
   image_id = data.aws_ami.latest_amazon_linux.id
@@ -180,6 +197,7 @@ resource "aws_launch_template" "web-template" {
   }
   instance_type          = "t3.medium"
   vpc_security_group_ids = [aws_security_group.web.id]
+  key_name = aws_key_pair.web_ec2_key_pair.key_name
   user_data              = base64encode(file("user-data.sh"))
   update_default_version = true
   tags = {
