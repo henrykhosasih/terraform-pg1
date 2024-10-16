@@ -173,7 +173,7 @@ resource "tls_private_key" "web_ec2_key" {
 
 resource "aws_ssm_parameter" "web_ssh_key" {
   name        = "/web/ssh/private_key"
-  type        = "SecureString"
+    type        = "SecureString"
   value       = tls_private_key.web_ec2_key.private_key_pem
   description = "Private SSH key for Web EC2 instances"
 }
