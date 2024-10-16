@@ -2,10 +2,6 @@ name: "Terraform Destroy Action"
 
 on:
   workflow_dispatch: # Manually triggered via GitHub Actions UI
-  push:
-    branches:
-      - main
-  pull_request:
 
 permissions:
   id-token: write # This is required for AWS OIDC connection
