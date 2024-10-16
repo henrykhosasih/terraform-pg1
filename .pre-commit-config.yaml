@@ -1,0 +1,7 @@
+- repo: https://github.com/hashicorp/terraform
+  rev: v0.15.0
+  hooks:
+    - id: terraform_fmt
+      name: Terraform fmt
+      args: ["fmt", "-"]
+      files: \.tf$
