@@ -197,7 +197,7 @@ resource "aws_launch_template" "web-template" {
   }
   instance_type          = "t3.medium"
   vpc_security_group_ids = [aws_security_group.web.id]
-  key_name = aws_key_pair.web_ec2_key_pair.key_name
+  key_name               = aws_key_pair.web_ec2_key_pair.key_name
   user_data              = base64encode(file("user-data.sh"))
   update_default_version = true
   tags = {
