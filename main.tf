@@ -300,6 +300,7 @@ resource "aws_cloudwatch_metric_alarm" "web-cpu-low" {
   statistic           = "Average"
   threshold           = 40
 
+
   dimensions = {
     AutoScalingGroupName = aws_autoscaling_group.web-asg.name
   }
